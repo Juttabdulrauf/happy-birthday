@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starlight Journey ✨</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050205; /* Deep luxury dark background */
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .progress-bar-container {
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff2e63, #ff96ad);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px #ff2e63;
+        }
+
+        .instruction {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        /* --- FLOATING APP DOCK NAVIGATION --- */
+.floating-nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    display: flex;
+    gap: 10px;
+    padding: 10px 20px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.nav-item {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: rgba(255, 46, 99, 0.8);
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(255, 46, 99, 0.5);
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 600px) {
+    .floating-nav {
+        width: 90%;
+        justify-content: space-between;
+        padding: 10px;
+        gap: 5px;
+    }
+    .nav-item {
+        padding: 10px;
+        font-size: 0.8rem;
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+    </style>
+</head>
+<body>
+    <nav class="floating-nav">
+    <a href="home.html" class="nav-item">🏠 Home</a>
+    <a href="heart.html" class="nav-item">❤️ Heart</a>
+    <a href="gallery.html" class="nav-item">📸 Gallery</a>
+    <a href="game.html" class="nav-item active">🎮 Game</a>
+        <a href="wishes.html" class="nav-item">✨ Wishes</a>
+</nav>
+
+    <div class="ui-layer" id="ui">
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="instruction" id="instructionText">Guide her to collect 10 stars</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const progressBar = document.getElementById('progressBar');
+        const instructionText = document.getElementById('instructionText');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- LOAD HER PICTURE ---
+        const faceImage = new Image();
+        // Replace with her actual image file name (e.g., 'hafsa.jpg')
+        faceImage.src = 'snapchat-911394868.jpg'; 
+        let imageLoaded = false;
+        faceImage.onload = () => { imageLoaded = true; };
+
+        // --- GAME STATE ---
+        let score = 0;
+        const targetScore = 10;
+        let gameState = 'PLAYING'; // PLAYING, TARGET_SPAWNED, WISHING
+        let particles = [];
+        let orbs = [];
+        let specialTarget = null;
+        let wishText = "Happy Birthday, Hafsa! 🎉\nWishing you a spectacular year filled with endless joy,\nhigh energy, and nothing but the best moments.\nKeep shining and have an amazing day!";
+        let typedWish = "";
+        let typeIndex = 0;
+        let typeTimer = 0;
+
+        // --- PLAYER MECHANICS ---
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            targetX: canvas.width / 2,
+            targetY: canvas.height - 100,
+            radius: 35
+        };
+
+        // Smoothly follow the mouse/finger (Linear Interpolation)
+        function updateMouse(x, y) {
+            player.targetX = x;
+            player.targetY = y;
+        }
+        window.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+        });
+
+        // --- ENTITIES ---
+        class Orb {
+            constructor() {
+                this.radius = 12;
+                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                this.y = -20;
+                this.speedY = Math.random() * 2 + 3;
+                this.color = '#00ffff'; // Neon cyan
+            }
+            update() {
+                this.y += this.speedY;
+                if (this.y > canvas.height + this.radius) {
+                    this.y = -20;
+                    this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                }
+            }
+            draw(time) {
+                const pulse = Math.sin(time * 0.1) * 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + pulse, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class SpecialTarget {
+            constructor() {
+                this.radius = 60;
+                this.x = canvas.width / 2;
+                this.y = -100;
+                this.targetY = canvas.height / 2.5; // Stops in the upper middle
+                this.color = '#FFD700'; // Gold
+            }
+            update() {
+                // Smoothly float down to the center
+                this.y += (this.targetY - this.y) * 0.05;
+            }
+            draw(time) {
+                const pulse = Math.sin(time * 0.05) * 8;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + pulse, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                
+                // Inner icon/gift look
+                ctx.fillStyle = '#fff';
+                ctx.font = '40px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🎁', this.x, this.y);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 4 + 1;
+                this.color = color;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 10 + 2;
+                this.speedX = Math.cos(angle) * speed;
+                this.speedY = Math.sin(angle) * speed;
+                this.gravity = 0.1;
+                this.opacity = 1;
+                this.decay = Math.random() * 0.02 + 0.01;
+            }
+            update() {
+                this.speedY += this.gravity;
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.opacity -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Initialize first few orbs
+        for (let i = 0; i < 5; i++) orbs.push(new Orb());
+
+        function createExplosion(x, y, color, massive = false) {
+            const count = massive ? 100 : 20;
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        // --- MAIN ENGINE ---
+        let frame = 0;
+        function animate() {
+            frame++;
+            
+            // Motion blur trail
+            ctx.fillStyle = 'rgba(5, 2, 5, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Smooth player movement
+            player.x += (player.targetX - player.x) * 0.15;
+            player.y += (player.targetY - player.y) * 0.15;
+
+            if (gameState === 'PLAYING') {
+                // Handle Orbs
+                for (let i = 0; i < orbs.length; i++) {
+                    let o = orbs[i];
+                    o.update();
+                    o.draw(frame);
+
+                    // Collision with player
+                    let dist = Math.hypot(player.x - o.x, player.y - o.y);
+                    if (dist < player.radius + o.radius) {
+                        createExplosion(o.x, o.y, o.color);
+                        score++;
+                        progressBar.style.width = `${(score / targetScore) * 100}%`;
+                        
+                        // Reset orb to top
+                        o.y = -20;
+                        o.x = Math.random() * (canvas.width - o.radius * 2) + o.radius;
+
+                        if (score >= targetScore) {
+                            gameState = 'TARGET_SPAWNED';
+                            orbs = []; // Clear standard orbs
+                            specialTarget = new SpecialTarget();
+                            instructionText.innerText = "OPEN THE GIFT!";
+                            progressBar.style.background = '#FFD700'; // Turn bar gold
+                            progressBar.style.boxShadow = '0 0 10px #FFD700';
+                        }
+                    }
+                }
+            } 
+            else if (gameState === 'TARGET_SPAWNED') {
+                specialTarget.update();
+                specialTarget.draw(frame);
+
+                // Collision with Gift
+                let dist = Math.hypot(player.x - specialTarget.x, player.y - specialTarget.y);
+                if (dist < player.radius + specialTarget.radius) {
+                    createExplosion(specialTarget.x, specialTarget.y, '#FFD700', true);
+                    createExplosion(specialTarget.x, specialTarget.y, '#ff2e63', true);
+                    gameState = 'WISHING';
+                    document.getElementById('ui').style.display = 'none'; // Hide UI
+                }
+            }
+            else if (gameState === 'WISHING') {
+                // Typewriter effect logic
+                typeTimer++;
+                if (typeTimer % 3 === 0 && typeIndex < wishText.length) {
+                    typedWish += wishText.charAt(typeIndex);
+                    typeIndex++;
+                }
+
+                // Draw the Wish Text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '24px "Helvetica Neue", Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#ff2e63';
+                
+                // Handle newlines in canvas text
+                let lines = typedWish.split('\n');
+                let lineY = canvas.height / 2 - (lines.length * 15);
+                for (let i = 0; i < lines.length; i++) {
+                    ctx.fillText(lines[i], canvas.width / 2, lineY + (i * 35));
+                }
+                ctx.shadowBlur = 0;
+
+                // Occasional background fireworks to keep it looking cool
+                if (frame % 40 === 0) {
+                    createExplosion(
+                        Math.random() * canvas.width, 
+                        Math.random() * canvas.height, 
+                        Math.random() > 0.5 ? '#FFD700' : '#ff2e63'
+                    );
+                }
+            }
+
+            // Draw Player (Her Face)
+            if (gameState !== 'WISHING') { // Hide player during final text sequence
+                if (imageLoaded) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(faceImage, player.x - player.radius, player.y - player.radius, player.radius * 2, player.radius * 2);
+                    ctx.restore();
+
+                    // Player Glow Ring
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#ff2e63';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ff2e63';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                } else {
+                    // Fallback circle if image doesn't load
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ff2e63';
+                    ctx.fill();
+                }
+            }
+
+            // Update & Draw Particles
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].opacity <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

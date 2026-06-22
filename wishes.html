@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishes ✨</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #050205; /* Luxury dark theme */
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* --- BACKGROUND CANVAS --- */
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* --- CONTENT LAYOUT --- */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            padding: 60px 20px 120px 20px; /* Extra bottom padding for the nav bar */
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 46, 99, 0.6);
+            margin-bottom: 10px;
+        }
+
+        .page-header p {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* --- 3D GLASSMORPHISM CARDS --- */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            perspective: 1000px;
+        }
+
+        .wish-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px 30px;
+            transition: transform 0.1s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            transform-style: preserve-3d;
+            cursor: default;
+        }
+
+        /* The 3D Hover Effect is handled by JS, but the glow is CSS */
+        .wish-card:hover {
+            box-shadow: 0 15px 35px rgba(255, 46, 99, 0.2), inset 0 0 0 1px rgba(255, 46, 99, 0.5);
+            border-color: rgba(255, 46, 99, 0.5);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            transform: translateZ(30px); /* Pops out during 3D tilt */
+            display: inline-block;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            color: #ff2e63;
+            margin-bottom: 15px;
+            font-weight: 600;
+            transform: translateZ(20px);
+        }
+
+        .card-text {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+            transform: translateZ(10px);
+        }
+
+        /* --- FLOATING APP DOCK NAVIGATION --- */
+        .floating-nav {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 46, 99, 0.8);
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 46, 99, 0.5);
+        }
+
+        @media (max-width: 600px) {
+            .page-header h1 { font-size: 2.2rem; }
+            .floating-nav { width: 90%; justify-content: space-between; padding: 10px; gap: 5px; }
+            .nav-item { padding: 10px; font-size: 0.8rem; flex-direction: column; gap: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="content-wrapper">
+        <div class="page-header">
+            <h1>FOR THE RECORD</h1>
+            <p>A few notes, wishes, and highly accurate facts.</p>
+        </div>
+
+        <div class="cards-grid">
+            
+            <div class="wish-card">
+                <div class="card-icon">🎯</div>
+                <div class="card-title">The Official Wish</div>
+                <div class="card-text">Happy Birthday! Hoping this year brings you zero bugs, fast internet speeds, and absolutely elite levels of success. You deserve a year as awesome as your game scores.</div>
+            </div>
+
+            <div class="wish-card">
+                <div class="card-icon">⚡️</div>
+                <div class="card-title">Fact Check</div>
+                <div class="card-text">Just wanted to officially document that you are doing great. Even when things get chaotic, you handle it like a pro. Keep that exact same energy going into this new year.</div>
+            </div>
+
+            <div class="wish-card">
+                <div class="card-icon">☕️</div>
+                <div class="card-title">Daily Reminder</div>
+                <div class="card-text">Make sure you actually take a break today. Eat something good, ignore responsibilities for exactly 24 hours, and just enjoy the fact that it’s your day.</div>
+            </div>
+
+            <div class="wish-card">
+                <div class="card-icon">🚀</div>
+                <div class="card-title">Looking Forward</div>
+                <div class="card-text">I can’t wait to see what you accomplish next. Whatever the next milestone is, I know you’re going to crush it completely. Have the best birthday ever!</div>
+            </div>
+
+        </div>
+    </div>
+
+    <nav class="floating-nav">
+        <a href="home.html" class="nav-item">🏠 Home</a>
+        <a href="wishes.html" class="nav-item active">✨ Wishes</a>
+        <a href="heart.html" class="nav-item">❤️ Heart</a>
+        <a href="gallery.html" class="nav-item">📸 Gallery</a>
+        <a href="game.html" class="nav-item">🎮 Game</a>
+    </nav>
+
+    <script>
+        // --- 1. 3D HOVER EFFECT FOR CARDS ---
+        const cards = document.querySelectorAll('.wish-card');
+
+        cards.forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                // Calculate mouse position relative to the center of the card
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+
+                // Apply the 3D rotation based on mouse position
+                const rotateX = (-y / 15).toFixed(2);
+                const rotateY = (x / 15).toFixed(2);
+
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+            });
+
+            card.addEventListener('mouseleave', () => {
+                // Smoothly snap back to normal when mouse leaves
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)`;
+                card.style.transition = `transform 0.5s ease, box-shadow 0.3s ease`;
+            });
+
+            card.addEventListener('mouseenter', () => {
+                // Remove transition delay so it tracks mouse instantly
+                card.style.transition = `box-shadow 0.3s ease`;
+            });
+        });
+
+        // --- 2. DYNAMIC CONSTELLATION BACKGROUND ---
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        
+        // Mouse interaction for the stars
+        let mouse = { x: null, y: null, radius: 150 };
+        window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        }
+        window.addEventListener('resize', resize);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = Math.random() > 0.5 ? '#ff2e63' : '#00ffff'; // Mix of pink and cyan
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                // Bounce off edges
+                if (this.x > canvas.width || this.x < 0) this.speedX = -this.speedX;
+                if (this.y > canvas.height || this.y < 0) this.speedY = -this.speedY;
+
+                // Mouse push effect
+                if (mouse.x !== null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx*dx + dy*dy);
+                    if (distance < mouse.radius) {
+                        this.x -= dx * 0.02;
+                        this.y -= dy * 0.02;
+                    }
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.5;
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            // Adjust particle count based on screen size for performance
+            const numberOfParticles = (canvas.width * canvas.height) / 15000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                
+                // Draw connecting lines if particles are close
+                for (let j = i; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x;
+                    let dy = particles[i].y - particles[j].y;
+                    let distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = particles[i].color;
+                        ctx.globalAlpha = 1 - (distance / 120); // Fade out as they get further
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        resize();
+        animate();
+    </script>
+</body>
+</html>

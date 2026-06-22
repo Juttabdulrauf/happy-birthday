@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For Hafsa Tariq</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050205;
+            font-family: 'Montserrat', 'Helvetica Neue', sans-serif;
+            cursor: default;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Center Content Layer */
+        .text-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            text-align: center;
+            pointer-events: none; /* Allows mouse interactions to pass through to the canvas particles */
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 3.5rem;
+            font-weight: 300;
+            letter-spacing: 0.5rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(255, 46, 99, 0.6),
+                         0 0 40px rgba(255, 46, 99, 0.3);
+            animation: textPulse 3s ease-in-out infinite;
+            white-space: nowrap;
+        }
+        /* --- FLOATING APP DOCK NAVIGATION --- */
+.floating-nav {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    display: flex;
+    gap: 10px;
+    padding: 10px 20px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.nav-item {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: rgba(255, 46, 99, 0.8);
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(255, 46, 99, 0.5);
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 600px) {
+    .floating-nav {
+        width: 90%;
+        justify-content: space-between;
+        padding: 10px;
+        gap: 5px;
+    }
+    .nav-item {
+        padding: 10px;
+        font-size: 0.8rem;
+        flex-direction: column;
+        gap: 4px;
+    }
+}
+
+        @keyframes textPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.9;
+                text-shadow: 0 0 20px rgba(255, 46, 99, 0.6);
+            }
+            50% {
+                transform: scale(1.03);
+                opacity: 1;
+                text-shadow: 0 0 35px rgba(255, 46, 99, 0.9), 0 0 50px rgba(255, 46, 99, 0.4);
+            }
+        }
+
+        /* Subtle responsive design for smaller screens */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+                letter-spacing: 0.2rem;
+            }
+        }
+    </style>
+    <!-- Google Font for sleek typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="floating-nav">
+    <a href="home.html" class="nav-item">🏠 Home</a>
+    <a href="heart.html" class="nav-item active">❤️ Heart</a>
+    <a href="gallery.html" class="nav-item">📸 Gallery</a>
+    <a href="game.html" class="nav-item">🎮 Game</a>
+    <a href="wishes.html" class="nav-item">✨ Wishes</a>
+</nav>
+
+    <div class="text-container">
+        <h1>Hafsa Tariq</h1>
+    </div>
+
+    <canvas id="heartCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('heartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        const particleCount = 2500; // Total number of glowing points forming the heart
+        
+        // Mouse/Touch interaction object
+        const mouse = {
+            x: null,
+            y: null,
+            radius: 90 // Distance at which particles will push away from cursor
+        };
+
+        // Handle resizing dynamically
+        function initCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        initCanvasSize();
+
+        window.addEventListener('resize', () => {
+            initCanvasSize();
+            createHeart(); // Re-calculate target coordinates on window resize
+        });
+
+        // Track Mouse Movement
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        window.addEventListener('mouseout', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Track Touch Movement for Mobile Devices
+        window.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) {
+                mouse.x = e.touches[0].clientX;
+                mouse.y = e.touches[0].clientY;
+            }
+        });
+
+        window.addEventListener('touchend', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Mathematical Formula to sample a Heart Shape
+        // Scale determines size, t controls progress along the parametric curve
+        function getHeartPoint(t, scale) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+            return {
+                x: x * scale,
+                y: -y * scale // Inverted because canvas Y-axis points downward
+            };
+        }
+
+        // Particle Blueprint Object
+        class Particle {
+            constructor(targetX, targetY) {
+                // Spawn randomly on screen initially
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                
+                // Base target structural coordinates inside the heart structure
+                this.baseX = targetX;
+                this.baseY = targetY;
+                
+                this.size = Math.random() * 2 + 0.5; // Variety of tiny particle sizes
+                
+                // Color variation: Blend of deep crimson, vibrant pink, and soft rose golds
+                const colors = ['#ff2e63', '#ff6f91', '#ff96ad', '#d32650', '#ff4d6d'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                this.speedX = 0;
+                this.speedY = 0;
+                this.friction = 0.88; // Friction slows particle down after being pushed
+                this.ease = 0.06;     // Acceleration factor to snap back to structural shape
+            }
+
+            update(heartBeatScale) {
+                // Apply dynamic heartbeat pulsing to the structural target base
+                const currentTargetX = canvas.width / 2 + (this.baseX - canvas.width / 2) * heartBeatScale;
+                const currentTargetY = canvas.height / 2 + (this.baseY - canvas.height / 2) * heartBeatScale;
+
+                // Physics Layer 1: Mouse Interactive Scattering Mechanism
+                if (mouse.x !== null && mouse.y !== null) {
+                    let dx = this.x - mouse.x;
+                    let dy = this.y - mouse.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < mouse.radius) {
+                        let force = (mouse.radius - distance) / mouse.radius; // Stronger force closer to cursor
+                        let forceX = (dx / distance) * force * 12;
+                        let forceY = (dy / distance) * force * 12;
+                        
+                        this.speedX += forceX;
+                        this.speedY += forceY;
+                    }
+                }
+
+                // Physics Layer 2: Magnetic spring physics returning home to heart layout
+                let homeDx = currentTargetX - this.x;
+                let homeDy = currentTargetY - this.y;
+                
+                this.speedX += homeDx * this.ease;
+                this.speedY += homeDy * this.ease;
+
+                // Apply drag forces and assign new positional frame vector
+                this.speedX *= this.friction;
+                this.speedY *= this.friction;
+                
+                this.x += this.speedX;
+                this.y += this.speedY;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        // Initialize and calculate heart spatial maps
+        function createHeart() {
+            particles = [];
+            
+            // Adapt core size of heart to look balanced on desktop screens vs phones
+            const minDimension = Math.min(canvas.width, canvas.height);
+            const scaleFactor = minDimension / 42; 
+
+            for (let i = 0; i < particleCount; i++) {
+                // Generate uniform distribution along parametric timeline (0 to 2*PI)
+                const t = (i / particleCount) * Math.PI * 2;
+                const heartPos = getHeartPoint(t, scaleFactor);
+                
+                // Apply a slight randomized spread thickness inside the outline
+                const interiorSpreadX = (Math.random() - 0.5) * (scaleFactor * 4);
+                const interiorSpreadY = (Math.random() - 0.5) * (scaleFactor * 4);
+
+                const finalTargetX = (canvas.width / 2) + heartPos.x + interiorSpreadX;
+                const finalTargetY = (canvas.height / 2) + heartPos.y + interiorSpreadY;
+
+                particles.push(new Particle(finalTargetX, finalTargetY));
+            }
+        }
+        createHeart();
+
+        // High-Performance Engine Animation Loop
+        let animationFrameTime = 0;
+        
+        function animate(timestamp) {
+            animationFrameTime += 0.04; // Controls heartbeat speed multiplier
+            
+            // Clear canvas while maintaining tiny alpha trail ghosting effect
+            ctx.fillStyle = 'rgba(5, 2, 5, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Heartbeat scale math modeled after physiological sinus wave compression
+            // Creates a dual-thump accent pulse rhythm
+            const basePulse = Math.sin(animationFrameTime);
+            let heartBeatScale = 1 + (basePulse > 0 ? Math.pow(basePulse, 3) * 0.08 : Math.sin(animationFrameTime * 2) * 0.02);
+
+            // Map operations through the particle array list
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update(heartBeatScale);
+                particles[i].draw();
+            }
+
+            requestAnimationFrame(animate);
+        }
+        
+        // Start engine
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
