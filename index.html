@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM LOCKED</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #050205; /* Luxury dark theme */
+            color: #ff2e63;
+            font-family: 'Courier New', Courier, monospace; /* Terminal vibe */
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Ambient scanline effect for terminal feel */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Screen Containers */
+        .screen {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            transition: opacity 1s ease, transform 1s ease;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+
+        /* --- COUNTDOWN UI --- */
+        .lock-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            letter-spacing: 5px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 20px;
+        }
+
+        .timer-display {
+            font-size: 4.5rem;
+            font-weight: bold;
+            color: #ff2e63;
+            text-shadow: 0 0 20px rgba(255, 46, 99, 0.6);
+            letter-spacing: 2px;
+        }
+
+        .labels {
+            display: flex;
+            gap: 3.5rem;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            margin-top: 10px;
+        }
+
+        /* --- TERMINAL UI --- */
+        .terminal-header {
+            color: #00ffff;
+            font-size: 2rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .question {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #ff2e63;
+            color: #00ffff;
+            font-size: 1.5rem;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            outline: none;
+            width: 300px;
+            padding: 10px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            z-index: 6; /* Needs to be above ambient background */
+        }
+
+        input:focus {
+            border-bottom: 2px solid #00ffff;
+            box-shadow: 0 10px 10px -10px #00ffff;
+        }
+
+        .error-msg {
+            color: red;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            letter-spacing: 2px;
+        }
+
+        /* --- SUCCESS UI --- */
+        .enter-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: transparent;
+            border: 2px solid #ff2e63;
+            color: #ff2e63;
+            font-size: 1.2rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            letter-spacing: 3px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            z-index: 6;
+        }
+
+        .enter-btn:hover {
+            background: #ff2e63;
+            color: #050205;
+            box-shadow: 0 0 20px #ff2e63;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; text-shadow: 0 0 15px #ff2e63; }
+        }
+
+        @media (max-width: 768px) {
+            .timer-display { font-size: 2.5rem; }
+            .labels { gap: 1.5rem; font-size: 0.7rem; }
+            input { width: 80%; }
+        }
+
+        /* Secret dev button so you can bypass the timer while testing */
+        .dev-skip {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            opacity: 0.1;
+            cursor: pointer;
+            font-size: 10px;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="shatterCanvas"></canvas>
+
+    <div class="dev-skip" onclick="activateTerminal()">[DEV SKIP]</div>
+
+    <div id="countdown-screen" class="screen">
+        <div class="lock-icon">🔒</div>
+        <h1>SYSTEM LOCKED UNTIL HAFSA'S BIRTHDAY</h1>
+        <div class="timer-display" id="timer">00 : 00 : 00 : 00</div>
+        <div class="labels">
+            <span>DAYS</span>
+            <span>HOURS</span>
+            <span>MINUTES</span>
+            <span>SECONDS</span>
+        </div>
+    </div>
+
+    <div id="terminal-screen" class="screen hidden">
+        <div class="terminal-header">SECURITY PROTOCOL INITIATED</div>
+        <div class="question">
+            > Enter one of our magic words that we often say to unlock the system. <br>
+        </div>
+        <input type="text" id="passwordInput" placeholder="Awaiting input..." autocomplete="off">
+        <div class="error-msg" id="errorMsg">ACCESS DENIED: INCORRECT CODE</div>
+    </div>
+
+    <div id="success-screen" class="screen hidden">
+        <div class="terminal-header" style="color: #00ffff;">ACCESS GRANTED</div>
+        <div class="question" style="margin-bottom: 10px;">> Welcome back, Hafsa.</div>
+        <div class="question" style="color: rgba(255,255,255,0.5); font-size: 0.9rem;">> Initializing birthday protocols...</div>
+        
+        <a href="home.html" class="enter-btn">ENTER MAINFRAME</a>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        
+        // 1. Set her birthday target date and time! (Format: 'Month DD, YYYY HH:MM:SS')
+        const birthdayDate = new Date('2026-06-29T00:00:00+03:00').getTime();
+
+        // 2. Set the exact password she needs to type (make it lowercase to avoid case-sensitivity issues)
+        const acceptableAnswers = [
+    "dump",
+    "Dumb", 
+    "dumb", 
+    "Dump",
+    "pagal larki",
+    "Pagal larki", 
+    "wow",
+    "Wow",
+    "damn",
+    "Damn",
+    "Vip banda",
+    "vip banda",
+    "4 saal agreement",
+    "ohh"
+];
+
+        // --- DOM Elements ---
+        const countdownScreen = document.getElementById('countdown-screen');
+        const terminalScreen = document.getElementById('terminal-screen');
+        const successScreen = document.getElementById('success-screen');
+        const timerDisplay = document.getElementById('timer');
+        const passwordInput = document.getElementById('passwordInput');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // --- COUNTDOWN LOGIC ---
+        let countdownInterval = setInterval(updateTimer, 1000);
+        updateTimer(); // Call immediately so it doesn't delay 1 second
+
+        function updateTimer() {
+            const now = new Date().getTime();
+            const distance = birthdayDate - now;
+
+            if (distance <= 0) {
+                // Time is up! Switch to terminal
+                clearInterval(countdownInterval);
+                activateTerminal();
+                return;
+            }
+
+            // Math calculations for time
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            // Format with leading zeros
+            timerDisplay.innerText = 
+                `${String(days).padStart(2, '0')} : ` +
+                `${String(hours).padStart(2, '0')} : ` +
+                `${String(minutes).padStart(2, '0')} : ` +
+                `${String(seconds).padStart(2, '0')}`;
+        }
+
+        // --- SCREEN TRANSITIONS ---
+        function activateTerminal() {
+            clearInterval(countdownInterval); // Stop timer if Dev Skip was used
+            countdownScreen.classList.add('hidden');
+            setTimeout(() => {
+                terminalScreen.classList.remove('hidden');
+                passwordInput.focus();
+            }, 1000);
+        }
+
+        // --- PASSWORD LOGIC ---
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const attempt = passwordInput.value.trim().toLowerCase();
+                
+                if (acceptableAnswers.includes(attempt)) {
+                    // Success!
+                    errorMsg.style.opacity = 0;
+                    triggerShatterEffect();
+                    
+                    // Hide terminal and show final button
+                    terminalScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        successScreen.classList.remove('hidden');
+                    }, 1500);
+
+                } else {
+                    // Fail!
+                    errorMsg.style.opacity = 1;
+                    passwordInput.value = '';
+                    passwordInput.style.borderBottom = '2px solid red';
+                    
+                    setTimeout(() => {
+                        errorMsg.style.opacity = 0;
+                        passwordInput.style.borderBottom = '2px solid #ff2e63';
+                    }, 2000);
+                }
+            }
+        });
+
+        // --- CANVAS SHATTER EFFECT ---
+        const canvas = document.getElementById('shatterCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 5 + 2;
+                
+                // Colors match terminal text (Cyan, Pink, White)
+                const colors = ['#00ffff', '#ff2e63', '#ffffff'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 15 + 5; // Fast explosive speed
+                this.speedX = Math.cos(angle) * speed;
+                this.speedY = Math.sin(angle) * speed;
+                
+                this.friction = 0.95;
+                this.opacity = 1;
+                this.decay = Math.random() * 0.015 + 0.01;
+            }
+
+            update() {
+                this.speedX *= this.friction;
+                this.speedY *= this.friction;
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.opacity -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = this.color;
+                
+                // Draw square tech particles
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                
+                // Add glow
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        function triggerShatterEffect() {
+            // Trigger explosion from the center of the screen
+            for (let i = 0; i < 150; i++) {
+                particles.push(new Particle(canvas.width / 2, canvas.height / 2));
+            }
+            animateParticles();
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let activeParticles = false;
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].opacity > 0) {
+                    activeParticles = true;
+                }
+            }
+
+            if (activeParticles) {
+                requestAnimationFrame(animateParticles);
+            } else {
+                particles = []; // Clean up memory when done
+            }
+        }
+    </script>
+</body>
+</html>
